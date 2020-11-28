@@ -1,0 +1,1 @@
+php bin/hyperf.php server:watch

@@ -11,6 +11,7 @@ declare(strict_types=1);
  */
 namespace App\Exception\Handler;
 
+use App\Kernel\Http\Response;
 use Hyperf\Contract\StdoutLoggerInterface;
 use Hyperf\ExceptionHandler\ExceptionHandler;
 use Hyperf\HttpMessage\Stream\SwooleStream;
@@ -29,11 +30,24 @@ class AppExceptionHandler extends ExceptionHandler
         $this->logger = $logger;
     }
 
-    public function handle(Throwable $throwable, ResponseInterface $response)
+    public function handle(Throwable $throwable, ResponseInterface $response, $islog = true)
     {
-        $this->logger->error(sprintf('%s[%s] in %s', $throwable->getMessage(), $throwable->getLine(), $throwable->getFile()));
-        $this->logger->error($throwable->getTraceAsString());
-        return $response->withHeader('Server', 'Hyperf')->withStatus(500)->withBody(new SwooleStream('Internal Server Error.'));
+        $response = di()->get(Response::class);
+        // 格式化错误信息
+        $message = PHP_EOL;
+        $message .= "> [EX] ". "--------------------------[报错指南]----------------------------" . date("Y-m-d H:i:s") . PHP_EOL;
+        $message .= "> [EX] ". "异常消息：" . $throwable->getMessage() . PHP_EOL;
+        $message .= "> [EX] ". "文件：" . $throwable->getFile() . PHP_EOL;
+        $message .= "> [EX] ". "位置：" . $throwable->getLine() . "行" . PHP_EOL;
+        foreach (explode('#', $throwable->getTraceAsString()) as $key => $value) {
+            $message .= "> [EX] ". '#'.$value;
+        }
+        // print_context($this->getContext());
+        $message .= "> [EX] ". "--------------------------------------------------------------" . PHP_EOL;
+        // $this->logger->error($throwable->getMessage() . PHP_EOL . $message);
+        echo $message;
+
+        return $response->json("服务出现异常，请联系管理员")->withStatus(500);
     }
 
     public function isValid(Throwable $throwable): bool
